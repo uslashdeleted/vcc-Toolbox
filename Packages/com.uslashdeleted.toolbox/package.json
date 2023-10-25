@@ -1,16 +1,15 @@
 {
   "name": "com.uslashdeleted.toolbox",
   "displayName": "Toolbox",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Tool to speed up creation of Animator Controller and Expression Menu",
   "gitDependencies": {},
   "vpmDependencies": {
-    "com.vrchat.avatars": "3.4.1"
+    "com.vrchat.avatars": "^3.4.1"
   },
   "author": {
     "name": "uslashdeleted",
-    "email": "null@null",
-    "url": ""
+    "url": "https://github.com/uslashdeleted"
   },
   "legacyFolders": {},
   "legacyFiles": {},
@@ -18,6 +17,6 @@
   "type": "tool",
   "unity": "2019.4",
   "dependencies": {
-    "com.vrchat.avatars": "3.4.1"
+    "com.vrchat.avatars": "^3.4.1"
   }
 }
