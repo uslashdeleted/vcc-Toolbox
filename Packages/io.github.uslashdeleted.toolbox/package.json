@@ -1,0 +1,14 @@
+{
+  "name": "io.github.uslashdeleted.toolbox",
+  "displayName": "Toolbox",
+  "version": "0.2.3",
+  "unity": "2019.4",
+  "description": "Tool to speed up creation of Animator Controller and Expression Menu",
+  "author": {
+    "name": "uslashdeleted",
+    "url": "https://github.com/uslashdeleted/vpm-toolbox"
+  },
+  "vpmDependencies": {
+    "com.vrchat.avatars": ">=3.4.1"
+  }
+}

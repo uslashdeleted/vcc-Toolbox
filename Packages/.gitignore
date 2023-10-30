@@ -1,5 +1,7 @@
 /*/
 !com.vrchat.core.*
+com.vrchat.core.vpm-resolver
 
 # Change this to match your new package name
-!com.uslashdeleted.toolbox
+!io.github.uslashdeleted.toolbox
+!io.github.uslashdeleted.toolbox/Runtime
