@@ -10,27 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: -340790334, guid: 67cc4cb7839cd3741b63733d5adf0442, type: 3}
-  m_Name: Main Menu
+  m_Name: VRCExpressionsMenu
   m_EditorClassIdentifier: 
   controls:
-  - name: Boolean
+  - name: Int
     icon: {fileID: 0}
     type: 103
     parameter:
       name: 
     value: 1
     style: 0
-    subMenu: {fileID: 0}
-    subParameters: []
-    labels: []
-  - name: Ints
-    icon: {fileID: 0}
-    type: 103
-    parameter:
-      name: 
-    value: 1
-    style: 0
-    subMenu: {fileID: 11400000, guid: 5025b2285ee91b3488ce9185686e3c1d, type: 2}
+    subMenu: {fileID: 11400000, guid: ee0c9a7ead81c5345840afea4497aa01, type: 2}
     subParameters: []
     labels: []
   - name: Parts
@@ -40,16 +30,16 @@ MonoBehaviour:
       name: 
     value: 1
     style: 0
-    subMenu: {fileID: 11400000, guid: bc36fbc9bda17354ab53b1cd39f06b0e, type: 2}
+    subMenu: {fileID: 11400000, guid: 4921417974d88474294b42af5edbbd60, type: 2}
     subParameters: []
     labels: []
-  - name: Bools
+  - name: Bool
     icon: {fileID: 0}
     type: 103
     parameter:
       name: 
     value: 1
     style: 0
-    subMenu: {fileID: 11400000, guid: 9c9f02808f25c9c4fab4b39d9fcb320a, type: 2}
+    subMenu: {fileID: 11400000, guid: 5d4457eeb044f6f4abd4c40668e13a7f, type: 2}
     subParameters: []
     labels: []

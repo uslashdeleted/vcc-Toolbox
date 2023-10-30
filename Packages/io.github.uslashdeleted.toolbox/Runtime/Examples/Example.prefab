@@ -3408,8 +3408,8 @@ MonoBehaviour:
   portraitCameraRotationOffset: {x: 0, y: 1, z: 0, w: -0.00000004371139}
   networkIDs: []
   customExpressions: 1
-  expressionsMenu: {fileID: 11400000, guid: a53755422b218ae4f83c5ade42ee6db0, type: 2}
-  expressionParameters: {fileID: 11400000, guid: cf43d8884aa4d394790aa7253dd52183,
+  expressionsMenu: {fileID: 11400000, guid: d3ed07b57212d6642b8bb8e05570f79f, type: 2}
+  expressionParameters: {fileID: 11400000, guid: 4183827d80c269c419fb17f5be684d7c,
     type: 2}
   enableEyeLook: 0
   customEyeLookSettings:
@@ -3505,7 +3505,7 @@ MonoBehaviour:
     isDefault: 1
   - isEnabled: 0
     type: 5
-    animatorController: {fileID: 9100000, guid: ed717579681be4c4595e7da2d100c4cb,
+    animatorController: {fileID: 9100000, guid: 9eb0abb98352e154e845fdb78d3b3cc6,
       type: 2}
     mask: {fileID: 0}
     isDefault: 0

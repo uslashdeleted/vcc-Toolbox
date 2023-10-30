@@ -120,6 +120,8 @@ namespace AvatarToolbox
             // Save the submenu as an asset
             if (!menuExists)
             {
+                if (AssetDatabase.IsValidFolder("Assets/Toolbox") == false)
+                    AssetDatabase.CreateFolder("Assets", "Toolbox");
                 if (AssetDatabase.IsValidFolder("Assets/Toolbox/Generated Assets") == false)
                     AssetDatabase.CreateFolder("Assets/Toolbox", "Generated Assets");
                 if (AssetDatabase.IsValidFolder("Assets/Toolbox/Generated Assets/Submenu") == false)
