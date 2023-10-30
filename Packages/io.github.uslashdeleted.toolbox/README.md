@@ -25,4 +25,4 @@ The subfolder naming scheme for the Parts folder should follow the format `#.*`.
 255. folder.name
 
 The number in the name of the subfolder is equivalent to the Int value set for the transition to the selected animation(s) in the subfolder.
-**Important:** VRChat does not allow an Int value to exceed 255; this is the maximum limit.
+**Important:** VRChat does not allow an Int value to exceed 255.
