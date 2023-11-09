@@ -1,3 +1,5 @@
+# [Add to VCC](https://uslashdeleted.github.io/vcc-listing/)
+
 # Toolbox
 
 The example controller is completely assembled with the provided tools.
@@ -21,8 +23,7 @@ The subfolder naming scheme for the Parts folder should follow the format `#.*`.
 0. default
 1. Folder two
 2. Folder3
-...
-255. folder.name
+3. folder.name
 
 The number in the name of the subfolder is equivalent to the Int value set for the transition to the selected animation(s) in the subfolder.
 **Important:** VRChat does not allow an Int value to exceed 255.
