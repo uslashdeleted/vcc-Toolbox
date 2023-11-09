@@ -1,27 +1,39 @@
 ﻿using System.Collections.Generic;
-using UnityEditor;
-using UnityEditor.Animations;
-using UnityEngine;
 using System.Linq;
+using UnityEditor.Animations;
+using UnityEditor;
+using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using static AvatarToolbox.ParameterHandler;
 using static AvatarToolbox.MenuHandler;
+using static AvatarToolbox.ParameterHandler;
+
+/*
+    Changes:
+    Replaced most selections with VRCAvatarDescriptor to improve UX.
+    Made some minor changes to improve prettiness of the code.
+    Fixed an issue caused when Submenu Name is null (now prevents creating layer when it is null, and set a default name.)
+    Added Undo support.
+*/
 
 public class AddIntLayer : EditorWindow
 {
+    // Avatar components
+    private VRCAvatarDescriptor avatarDescriptor;
     private AnimatorController controller;
-    private string layerName = "Int";
-    private bool addingLayer = false;
-
+    private bool addToVRCMenu = false;
     private VRCExpressionsMenu vrcMenu;
     private VRCExpressionParameters vrcParameters;
-    private bool addToVRCMenu = false;
-    private string submenuName;
+    private string submenuName = "Int";
 
-    private Vector2 scrollPosition;
+    // Controller components
+    private string layerName = "Int";
 
+    // Selecting animations
     [SerializeField]
     private List<AnimationClip> animationClipsList = new List<AnimationClip>();
+
+    private Vector2 scrollPosition;
 
     [MenuItem("Toolbox/Create Int Layer")]
     public static void ShowWindow()
@@ -38,16 +50,31 @@ public class AddIntLayer : EditorWindow
 
     private void OnGUI()
     {
-        controller = EditorGUILayout.ObjectField("Animator Controller", controller, typeof(AnimatorController), false) as AnimatorController;
+        avatarDescriptor = EditorGUILayout.ObjectField("Avatar Descriptor", avatarDescriptor, typeof(VRCAvatarDescriptor), true) as VRCAvatarDescriptor;
+
+        if (avatarDescriptor != null)
+            if (avatarDescriptor.baseAnimationLayers[4].animatorController == null)
+                EditorGUILayout.LabelField("No animator found on FX Playable Layer.");
+            else
+                controller = (AnimatorController)avatarDescriptor.baseAnimationLayers[4].animatorController;
+
         layerName = EditorGUILayout.TextField("Layer Name", layerName);
 
+        GUI.enabled = avatarDescriptor != null;
         addToVRCMenu = EditorGUILayout.Toggle("Add to VRChat Menu", addToVRCMenu);
         if (addToVRCMenu)
         {
-            vrcMenu = EditorGUILayout.ObjectField("Main Menu", vrcMenu, typeof(VRCExpressionsMenu), false) as VRCExpressionsMenu;
-            vrcParameters = EditorGUILayout.ObjectField("Parameters", vrcParameters, typeof(VRCExpressionParameters), false) as VRCExpressionParameters;
+            if (avatarDescriptor.expressionsMenu != null)
+                vrcMenu = avatarDescriptor.expressionsMenu;
+            else
+                EditorGUILayout.LabelField("No Expressions Menu found.");
+            if (avatarDescriptor.expressionParameters != null)
+                vrcParameters = avatarDescriptor.expressionParameters;
+            else
+                EditorGUILayout.LabelField("No Expression Parameters found.");
             submenuName = EditorGUILayout.TextField("Submenu Name", submenuName);
         }
+
         EditorGUILayout.Space();
         scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
 
@@ -57,13 +84,32 @@ public class AddIntLayer : EditorWindow
 
         EditorGUILayout.EndScrollView();
 
-
-        GUI.enabled = !addingLayer && controller != null && !string.IsNullOrWhiteSpace(layerName) && (!addToVRCMenu || (vrcMenu != null && vrcParameters != null));
+        GUI.enabled =
+            controller != null &&
+            !string.IsNullOrWhiteSpace(layerName) &&
+            (!addToVRCMenu || (vrcMenu != null && vrcParameters != null && submenuName != null));
 
         if (GUILayout.Button("Add Layer"))
         {
-            addingLayer = true;
+            Undo.RecordObject(controller, "Add Int Layer");
+
+            if (addToVRCMenu)
+            {
+                Undo.RecordObject(vrcMenu, "Add Int Layer");
+                Undo.RecordObject(vrcParameters, "Add Int Layer");
+            }
+
             AddNewIntLayer();
+            EditorUtility.SetDirty(controller);
+
+            if (addToVRCMenu)
+            {
+                EditorUtility.SetDirty(vrcMenu);
+                EditorUtility.SetDirty(vrcParameters);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
     }
 
@@ -134,8 +180,6 @@ public class AddIntLayer : EditorWindow
         EditorUtility.SetDirty(controller);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-
-        addingLayer = false;
 
         Debug.Log($"Successfully added layer <color=#54e354>" + layerName + $"</color>");
     }

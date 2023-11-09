@@ -1,9 +1,17 @@
-using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEngine;
 using VRC.SDK3.Avatars.ScriptableObjects;
+
+/*
+    Changelog:
+    Changed the location of the generated assets to be in the same folder as vrcMenu instead of a default location.
+    Made some minor changes to improve prettiness of the code.
+    Added Undo support.
+*/
 
 namespace AvatarToolbox
 {
@@ -96,6 +104,9 @@ namespace AvatarToolbox
         public static VRCExpressionsMenu AddSubmenu(VRCExpressionsMenu vrcMenu, string menuName, string subfolderName)
         {
             bool menuExists = false;
+
+            Undo.RecordObject(vrcMenu, "Add Submenu");
+
             if (vrcMenu.controls.Count() >= 8)
             {
                 Debug.LogError("vrcMenu is full");
@@ -120,23 +131,30 @@ namespace AvatarToolbox
             // Save the submenu as an asset
             if (!menuExists)
             {
-                if (AssetDatabase.IsValidFolder("Assets/Toolbox") == false)
-                    AssetDatabase.CreateFolder("Assets", "Toolbox");
-                if (AssetDatabase.IsValidFolder("Assets/Toolbox/Generated Assets") == false)
-                    AssetDatabase.CreateFolder("Assets/Toolbox", "Generated Assets");
-                if (AssetDatabase.IsValidFolder("Assets/Toolbox/Generated Assets/Submenu") == false)
-                    AssetDatabase.CreateFolder("Assets/Toolbox/Generated Assets", "Submenu");
+                string path = Path.GetDirectoryName(AssetDatabase.GetAssetPath(vrcMenu)).Replace("\\", "/");
+
+                if (!path.EndsWith("/Submenu") && subfolderName == null)
+                {
+                    if (AssetDatabase.IsValidFolder($"{path}/Submenu") == false)
+                        AssetDatabase.CreateFolder(path, "Submenu");
+                    path += "/Submenu";
+                }
+                else if (path.EndsWith(subfolderName) && subfolderName != null)
+                    path = path.Replace($"/{subfolderName}", "");
+
                 if (!string.IsNullOrWhiteSpace(subfolderName))
                 {
-                    if (AssetDatabase.IsValidFolder($"Assets/Toolbox/Generated Assets/Submenu/{subfolderName}") == false)
-                        AssetDatabase.CreateFolder("Assets/Toolbox/Generated Assets/Submenu", $"{subfolderName}");
-                    AssetDatabase.CreateAsset(vrcSubMenu, $"Assets/Toolbox/Generated Assets/Submenu/{subfolderName}/{menuName}.asset");
+                    if (AssetDatabase.IsValidFolder($"{path}/{subfolderName}") == false)
+                        AssetDatabase.CreateFolder(path, subfolderName);
+
+                    AssetDatabase.CreateAsset(vrcSubMenu, $"{path}/{subfolderName}/{menuName}.asset");
                 }
                 else
                 {
-                    AssetDatabase.CreateAsset(vrcSubMenu, $"Assets/Toolbox/Generated Assets/Submenu/{menuName}.asset");
+                    AssetDatabase.CreateAsset(vrcSubMenu, $"{path}/{menuName}.asset");
                 }
             }
+
             EditorUtility.SetDirty(vrcSubMenu);
             EditorUtility.SetDirty(vrcMenu);
 
@@ -146,6 +164,7 @@ namespace AvatarToolbox
         public static void AddControl(VRCExpressionsMenu vrcMenu, string submenuName, string controlName, string parameterName, float val)
         {
             VRCExpressionsMenu subMenu = vrcMenu;
+            Undo.RecordObject(subMenu, "Add Control");
 
             if (submenuName != null)
             {
@@ -159,6 +178,7 @@ namespace AvatarToolbox
                 AddPage(subMenu);
                 lastPage = FindLastPage(lastPage);
             }
+            Undo.RecordObject(lastPage, "Add Control");
 
             VRCExpressionsMenu.Control newControl = new VRCExpressionsMenu.Control()
             {
@@ -174,6 +194,7 @@ namespace AvatarToolbox
         }
         public static void AddSubmenuControl(VRCExpressionsMenu vrcMenu, VRCExpressionsMenu subMenu, string menuName)
         {
+            Undo.RecordObject(vrcMenu, "Add Submenu Control");
             VRCExpressionsMenu.Control newControl = new VRCExpressionsMenu.Control()
             {
                 name = menuName,
@@ -187,6 +208,7 @@ namespace AvatarToolbox
 
         public static VRCExpressionsMenu AddPage(VRCExpressionsMenu vrcMenu)
         {
+            Undo.RecordObject(vrcMenu, "Add Page");
             VRCExpressionsMenu finalPage = FindLastPage(vrcMenu);
 
             int pageCount = 2;

@@ -1,34 +1,45 @@
-using UnityEngine;
-using UnityEditor;
-using UnityEditor.Animations;
-using System.IO;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using UnityEditor.Animations;
+using UnityEditor;
+using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using static AvatarToolbox.ParameterHandler;
 using static AvatarToolbox.MenuHandler;
+using static AvatarToolbox.ParameterHandler;
+
+/*
+    Changes:
+    Replaced most selections with VRCAvatarDescriptor to improve UX.
+    Made some minor changes to improve prettiness of the code.
+    Fixed an issue caused when Submenu Name is null (now prevents creating layer when it is null, and set a default name.)
+    Added Undo support.
+*/
+
 public class CreatePartsLayer : EditorWindow
 {
+    // Avatar Components
+    private VRCAvatarDescriptor avatarDescriptor;
     private AnimatorController controller;
-    private string layerName = "Layer Name";
-    private string[] intParameterNames = { "Int" };
-    private int selectedIntParameterIndex = 0;
+    private bool addToVRCMenu = false;
+    private VRCExpressionsMenu vrcMenu;
+    private VRCExpressionParameters vrcParameters;
+    private string submenuName = "Parts";
 
+    // Controller components
+    private string layerName = "Parts";
+    private string[] intParameterNames;
+    private int selectedIntParameterIndex = 0;
     private float transitionDuration = 0.0F;
 
+    // Selecting animations
     private DefaultAsset animationFolder;
     private Dictionary<string, List<string>> animationRootFolder = new Dictionary<string, List<string>>();
     private List<bool> animationCheckboxes = new List<bool>();
 
-    private VRCExpressionsMenu vrcMenu;
-    private VRCExpressionParameters vrcParameters;
-    private bool addToVRCMenu = false;
-    private string submenuName;
-
     private Vector2 scrollPosition;
-    private bool addingLayer = false;
-    private bool scanComplete = false;
 
     [MenuItem("Toolbox/Create Parts Layer")]
     public static void ShowWindow()
@@ -38,25 +49,39 @@ public class CreatePartsLayer : EditorWindow
 
     private void OnGUI()
     {
-        controller = EditorGUILayout.ObjectField("Animator Controller", controller, typeof(AnimatorController), false) as AnimatorController;
+        avatarDescriptor = EditorGUILayout.ObjectField("Avatar Descriptor", avatarDescriptor, typeof(VRCAvatarDescriptor), true) as VRCAvatarDescriptor;
+
+        if (avatarDescriptor != null)
+            if (avatarDescriptor.baseAnimationLayers[4].animatorController == null)
+                EditorGUILayout.LabelField("No animator found on FX Playable Layer.");
+            else
+                controller = (AnimatorController)avatarDescriptor.baseAnimationLayers[4].animatorController;
+
         layerName = EditorGUILayout.TextField("Layer Name", layerName);
 
         intParameterNames = GetIntParameterNames(controller);
         selectedIntParameterIndex = Mathf.Clamp(selectedIntParameterIndex, 0, intParameterNames.Length - 1);
-        selectedIntParameterIndex = EditorGUILayout.Popup("Int Parameter:", selectedIntParameterIndex, intParameterNames);
+        selectedIntParameterIndex = EditorGUILayout.Popup("Int Parameter", selectedIntParameterIndex, intParameterNames);
 
         transitionDuration = EditorGUILayout.FloatField("Transition Duration", transitionDuration);
         animationFolder = EditorGUILayout.ObjectField("Animation Folder", animationFolder, typeof(DefaultAsset), false) as DefaultAsset;
 
+        GUI.enabled = avatarDescriptor != null;
         addToVRCMenu = EditorGUILayout.Toggle("Add to VRChat Menu", addToVRCMenu);
         if (addToVRCMenu)
         {
-            vrcMenu = EditorGUILayout.ObjectField("Main Menu", vrcMenu, typeof(VRCExpressionsMenu), false) as VRCExpressionsMenu;
-            vrcParameters = EditorGUILayout.ObjectField("Parameters", vrcParameters, typeof(VRCExpressionParameters), false) as VRCExpressionParameters;
+            if (avatarDescriptor.expressionsMenu != null)
+                vrcMenu = avatarDescriptor.expressionsMenu;
+            else
+                EditorGUILayout.LabelField("No Expressions Menu found.");
+            if (avatarDescriptor.expressionParameters != null)
+                vrcParameters = avatarDescriptor.expressionParameters;
+            else
+                EditorGUILayout.LabelField("No Expression Parameters found.");
             submenuName = EditorGUILayout.TextField("Submenu Name", submenuName);
         }
 
-        GUI.enabled = !addingLayer && (animationFolder != null);
+        GUI.enabled = animationFolder != null;
 
         if (GUILayout.Button("Scan folder"))
             ScanRootFolder();
@@ -65,25 +90,45 @@ public class CreatePartsLayer : EditorWindow
         DisplayAnimationsList();
         EditorGUILayout.EndScrollView();
 
-        GUI.enabled = !addingLayer && scanComplete && controller != null && !string.IsNullOrEmpty(layerName) && (!addToVRCMenu || (vrcMenu != null && vrcParameters != null));
+        GUI.enabled =
+            controller != null &&
+            !string.IsNullOrWhiteSpace(layerName) &&
+            (!addToVRCMenu || (vrcMenu != null && vrcParameters != null && submenuName != null));
 
         if (GUILayout.Button("Add Layer"))
         {
-            addingLayer = true;
+            Undo.RecordObject(controller, "Add Parts Layer");
+
+            if (addToVRCMenu)
+            {
+                Undo.RecordObject(vrcMenu, "Add Parts Layer");
+                Undo.RecordObject(vrcParameters, "Add Parts Layer");
+            }
+
             AddNewPartsLayer();
+            EditorUtility.SetDirty(controller);
+
+            if (addToVRCMenu)
+            {
+                EditorUtility.SetDirty(vrcMenu);
+                EditorUtility.SetDirty(vrcParameters);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
+
     }
 
     private string[] GetIntParameterNames(AnimatorController controller)
     {
         if (controller != null)
-        {
             return controller.parameters
                 .Where(p => p.type == AnimatorControllerParameterType.Int)
                 .Select(p => p.name)
                 .ToArray();
-        }
-        return new string[1] { "Select Controller" };
+        else
+            return new string[1] { "Select Controller" };
     }
 
     private void ScanRootFolder()
@@ -119,8 +164,6 @@ public class CreatePartsLayer : EditorWindow
         {
             animationCheckboxes.Add(false);
         }
-
-        scanComplete = true;
     }
 
     private void DisplayAnimationsList()
@@ -178,7 +221,7 @@ public class CreatePartsLayer : EditorWindow
             }
         }
 
-        // Make the layer  pretty
+        // Make the layer pretty
         newLayer.stateMachine.entryPosition = new Vector3(490, 60);
         newLayer.stateMachine.exitPosition = new Vector3(490, 110);
         newLayer.stateMachine.anyStatePosition = new Vector3(50, 0);
@@ -192,7 +235,6 @@ public class CreatePartsLayer : EditorWindow
         //              |- [anim2] -|
         //              |- [anim3] -|
         //              : : : : : : : 
-
         int animationIndex = 0;
         int pos = 0;
         foreach (var subfolderPath in animationRootFolder.Keys)
@@ -219,7 +261,6 @@ public class CreatePartsLayer : EditorWindow
             }
         }
 
-        //CreateBoolParameter();
         AddControllerParameter(controller, layerName, "bool");
         CreateAnimatorTransitions(newLayer.stateMachine);
 
@@ -236,13 +277,7 @@ public class CreatePartsLayer : EditorWindow
         // Reset values to default.
 
         for (int i = 0; i < animationCheckboxes.Count; i++)
-        {
             animationCheckboxes[i] = false;
-        }
-
-        transitionDuration = 0.0F;
-
-        addingLayer = false;
 
         Debug.Log($"Successfully added layer <color=#54e354>" + layerName + $"</color>");
     }

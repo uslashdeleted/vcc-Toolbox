@@ -1,29 +1,36 @@
-﻿using UnityEditor;
-using System.Collections.Generic;
-using UnityEditor.Animations;
-using UnityEngine;
+﻿using System.Collections.Generic;
 using System.Linq;
+using UnityEditor.Animations;
+using UnityEditor;
+using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using static AvatarToolbox.ParameterHandler;
 using static AvatarToolbox.MenuHandler;
+using static AvatarToolbox.ParameterHandler;
+
+/*
+    Changes:
+    Replaced most selections with VRCAvatarDescriptor to improve UX.
+    Made some minor changes to improve prettiness of the code.
+    Fixed an issue caused when Submenu Name is null (now prevents creating layer when it is null, and set a default name.)
+    Added Undo support.
+*/
 
 public class AddBoolLayer : EditorWindow
 {
+    // Avatar components
+    private VRCAvatarDescriptor avatarDescriptor;
     private AnimatorController controller;
-
-    private bool addingLayer = false;
-
-    private Vector2 scrollPosition;
-
-    private SerializedObject serializedObject;
-
+    private bool addToVRCMenu = false;
     private VRCExpressionsMenu vrcMenu;
     private VRCExpressionParameters vrcParameters;
-    private bool addToVRCMenu = false;
-    private string submenuName;
+    private string submenuName = "Bools";
 
+    // Selecting animations
     [SerializeField]
     private List<AnimationClip> animationClipsList = new List<AnimationClip>();
+
+    private Vector2 scrollPosition;
 
     [MenuItem("Toolbox/Create Bool Layers")]
     public static void ShowWindow()
@@ -31,6 +38,7 @@ public class AddBoolLayer : EditorWindow
         EditorWindow.GetWindow<AddBoolLayer>("Create Bool Layers");
     }
 
+    private SerializedObject serializedObject;
     private void OnEnable()
     {
         serializedObject = new SerializedObject(this);
@@ -38,16 +46,31 @@ public class AddBoolLayer : EditorWindow
 
     private void OnGUI()
     {
-        controller = EditorGUILayout.ObjectField("Animator Controller", controller, typeof(AnimatorController), false) as AnimatorController;
+        avatarDescriptor = EditorGUILayout.ObjectField("Avatar Descriptor", avatarDescriptor, typeof(VRCAvatarDescriptor), true) as VRCAvatarDescriptor;
 
+        if (avatarDescriptor != null)
+            if (avatarDescriptor.baseAnimationLayers[4].animatorController == null)
+                EditorGUILayout.LabelField("No animator found on FX Playable Layer.");
+            else
+                controller = (AnimatorController)avatarDescriptor.baseAnimationLayers[4].animatorController;
+
+        GUI.enabled = avatarDescriptor != null;
         addToVRCMenu = EditorGUILayout.Toggle("Add to VRChat Menu", addToVRCMenu);
         if (addToVRCMenu)
         {
-            vrcMenu = EditorGUILayout.ObjectField("Main Menu", vrcMenu, typeof(VRCExpressionsMenu), false) as VRCExpressionsMenu;
-            vrcParameters = EditorGUILayout.ObjectField("Parameters", vrcParameters, typeof(VRCExpressionParameters), false) as VRCExpressionParameters;
+            if (avatarDescriptor.expressionsMenu != null)
+                vrcMenu = avatarDescriptor.expressionsMenu;
+            else
+                EditorGUILayout.LabelField("No Expressions Menu found.");
+            if (avatarDescriptor.expressionParameters != null)
+                vrcParameters = avatarDescriptor.expressionParameters;
+            else
+                EditorGUILayout.LabelField("No Expression Parameters found.");
             submenuName = EditorGUILayout.TextField("Submenu Name", submenuName);
         }
+
         EditorGUILayout.Space();
+
         scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
 
         serializedObject.Update();
@@ -56,18 +79,31 @@ public class AddBoolLayer : EditorWindow
 
         EditorGUILayout.EndScrollView();
 
-
-        GUI.enabled = !addingLayer && controller != null && (!addToVRCMenu || (vrcMenu != null && vrcParameters != null));
+        GUI.enabled =
+            controller != null &&
+            (!addToVRCMenu || (vrcMenu != null && vrcParameters != null && submenuName != null));
 
         if (GUILayout.Button("Add Layers"))
         {
-            addingLayer = true;
+            Undo.RecordObject(controller, "Add Bool Layers");
+
+            if (addToVRCMenu)
+            {
+                Undo.RecordObject(vrcMenu, "Add Bool Layers");
+                Undo.RecordObject(vrcParameters, "Add Bool Layers");
+            }
+
             AddNewBoolLayers();
             EditorUtility.SetDirty(controller);
+
+            if (addToVRCMenu)
+            {
+                EditorUtility.SetDirty(vrcMenu);
+                EditorUtility.SetDirty(vrcParameters);
+            }
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-
-            addingLayer = false;
         }
     }
 
@@ -100,9 +136,8 @@ public class AddBoolLayer : EditorWindow
             else
             {   // If the state exists, clear the layer.
                 foreach (ChildAnimatorState state in newLayer.stateMachine.states)
-                {
                     newLayer.stateMachine.RemoveState(state.state);
-                }
+
             }
 
             newLayer.stateMachine.entryPosition = new Vector3(490, 0);
