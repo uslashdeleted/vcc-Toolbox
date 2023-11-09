@@ -1,5 +1,3 @@
-# [Add to VCC](https://uslashdeleted.github.io/vcc-listing/)
-
 # Toolbox
 
 The example controller is completely assembled with the provided tools.
