@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,10 +13,7 @@ using static AvatarToolbox.ParameterHandler;
 
 /*
     Changes:
-    Replaced most selections with VRCAvatarDescriptor to improve UX.
-    Made some minor changes to improve prettiness of the code.
-    Fixed an issue caused when Submenu Name is null (now prevents creating layer when it is null, and set a default name.)
-    Added Undo support.
+    Fixed script errors on avatar build
 */
 
 public class CreatePartsLayer : EditorWindow
@@ -331,3 +329,4 @@ public class CreatePartsLayer : EditorWindow
         }
     }
 }
+#endif

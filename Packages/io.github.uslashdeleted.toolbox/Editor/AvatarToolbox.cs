@@ -1,3 +1,4 @@
+#if UNITY_EDITOR 
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -8,9 +9,15 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 /*
     Changelog:
-    Changed the location of the generated assets to be in the same folder as vrcMenu instead of a default location.
-    Made some minor changes to improve prettiness of the code.
-    Added Undo support.
+    Fixed script errors on avatar build
+    Made AddSubmenu add a page if there are 8 items in the menu instead of 7
+        - It copies item #8, then puts it in the page it just created.
+    AddControl now allows for folders to go deeper
+        - for example, "Boolean menus/silly sounds/cow sounds"
+          will make a "Boolean menus" menu, put it in vrcMenu,
+          create "silly sounds", put it in "Boolean menus" etc.
+    AddControl now prevents duplicate menu items.
+        - It will now check if there is an item with identical name, parameter, type, and value
 */
 
 namespace AvatarToolbox
@@ -53,7 +60,7 @@ namespace AvatarToolbox
             {
                 // Debug.Log("Parameter does not exist, creating new Parameter.");
                 VRCExpressionParameters.Parameter[] updatedParameters = vrcParameters.parameters.Append(new VRCExpressionParameters.Parameter()
-                {
+                { // updatedParameters is created here because Unity is weird and won't properly append
                     name = parameterName,
                     valueType = parameterType,
                     defaultValue = 0.0F,
@@ -104,29 +111,43 @@ namespace AvatarToolbox
         public static VRCExpressionsMenu AddSubmenu(VRCExpressionsMenu vrcMenu, string menuName, string subfolderName)
         {
             bool menuExists = false;
+            bool copyLastItem = false;
 
             Undo.RecordObject(vrcMenu, "Add Submenu");
 
-            if (vrcMenu.controls.Count() >= 8)
+            VRCExpressionsMenu.Control lastControl = null;
+
+            if (vrcMenu.controls.Any())
             {
-                Debug.LogError("vrcMenu is full");
-                return null;
+                lastControl = vrcMenu.controls.Last();
+
+                if (vrcMenu.controls.Count() == 8)
+                {
+                    copyLastItem = true;
+                }
             }
 
             VRCExpressionsMenu.Control existingControl = vrcMenu.controls.FirstOrDefault(control => control.name == menuName);
             VRCExpressionsMenu vrcSubMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
 
             if (existingControl == null)
+            {
+                if (copyLastItem && lastControl != null)
+                {
+                    vrcSubMenu.controls.Add(lastControl);
+                    vrcMenu.controls.Remove(vrcMenu.controls.Last());
+                }
                 AddSubmenuControl(vrcMenu, vrcSubMenu, menuName);
-
+            }
             else if (existingControl.subMenu != null)
             {
                 vrcSubMenu = existingControl.subMenu;
                 menuExists = true;
             }
-
             else
+            {
                 existingControl.subMenu = vrcSubMenu;
+            }
 
             // Save the submenu as an asset
             if (!menuExists)
@@ -136,16 +157,22 @@ namespace AvatarToolbox
                 if (!path.EndsWith("/Submenu") && subfolderName == null)
                 {
                     if (AssetDatabase.IsValidFolder($"{path}/Submenu") == false)
+                    {
                         AssetDatabase.CreateFolder(path, "Submenu");
+                    }
                     path += "/Submenu";
                 }
                 else if (path.EndsWith(subfolderName) && subfolderName != null)
+                {
                     path = path.Replace($"/{subfolderName}", "");
+                }
 
                 if (!string.IsNullOrWhiteSpace(subfolderName))
                 {
                     if (AssetDatabase.IsValidFolder($"{path}/{subfolderName}") == false)
+                    {
                         AssetDatabase.CreateFolder(path, subfolderName);
+                    }
 
                     AssetDatabase.CreateAsset(vrcSubMenu, $"{path}/{subfolderName}/{menuName}.asset");
                 }
@@ -163,16 +190,29 @@ namespace AvatarToolbox
 
         public static void AddControl(VRCExpressionsMenu vrcMenu, string submenuName, string controlName, string parameterName, float val)
         {
+
             VRCExpressionsMenu subMenu = vrcMenu;
             Undo.RecordObject(subMenu, "Add Control");
 
             if (submenuName != null)
             {
-                subMenu = AddSubmenu(vrcMenu, submenuName, null);
+                string[] submenus = submenuName.Split('/');
+                if (submenus.Length > 1)
+                {
+                    subMenu = AddSubmenu(vrcMenu, submenus[0], null);
+                    for (int i = 1; i < submenus.Length; i++)
+                    {
+                        subMenu = AddSubmenu(subMenu, submenus[i], submenus[i - 1]);
+                    }
+                }
+                else
+                {
+                    subMenu = AddSubmenu(vrcMenu, submenuName, null);
+                }
             }
 
             VRCExpressionsMenu lastPage = FindLastPage(subMenu);
-            if (lastPage.controls.Count() >= 7)
+            if (lastPage.controls.Count() == 8)
             {
                 Debug.Log("Menu is full, adding page.");
                 AddPage(subMenu);
@@ -187,7 +227,23 @@ namespace AvatarToolbox
                 parameter = new VRCExpressionsMenu.Control.Parameter() { name = parameterName },
                 value = val
             };
-            lastPage.controls.Add(newControl);
+            bool controlExists = false;
+
+            foreach (VRCExpressionsMenu.Control control in lastPage.controls)
+            {
+                if (control.name == newControl.name &&
+                    control.type == newControl.type &&
+                    control.parameter.name == newControl.parameter.name &&
+                    control.value == newControl.value)
+                {
+                    controlExists = true;
+                    break;
+                }
+            }
+            if (controlExists == false)
+            {
+                lastPage.controls.Add(newControl);
+            }
             EditorUtility.SetDirty(lastPage);
             EditorUtility.SetDirty(vrcMenu);
             EditorUtility.SetDirty(subMenu);
@@ -240,7 +296,9 @@ namespace AvatarToolbox
             {
                 var targetControl = vrcMenu.controls.FirstOrDefault(control => Regex.IsMatch(control.name, @"Page \d+"));
                 if (targetControl != null && targetControl.subMenu != null)
+                {
                     vrcMenu = targetControl.subMenu;
+                }
                 else
                     break;
             }
@@ -248,3 +306,4 @@ namespace AvatarToolbox
         }
     }
 }
+#endif
